@@ -30,11 +30,12 @@ def save_seen(seen):
 
 def fetch_new_articles(seen):
     feed = feedparser.parse(FEED_URL)
+    feed_title = feed.feed.get("title", FEED_URL)
     new = []
     for entry in reversed(feed.entries):  # oldest first
         if entry.id not in seen:
             new.append(entry)
-    return new
+    return new, feed_title
 
 
 class FeedBot(discord.Client):
@@ -56,7 +57,7 @@ class FeedBot(discord.Client):
 
         while not self.is_closed():
             try:
-                new_articles = fetch_new_articles(self.seen)
+                new_articles, feed_title = fetch_new_articles(self.seen)
                 for entry in new_articles:
                     embed = discord.Embed(
                         title=entry.title,
@@ -66,7 +67,7 @@ class FeedBot(discord.Client):
                     )
                     if hasattr(entry, "media_content") and entry.media_content:
                         embed.set_image(url=entry.media_content[0].get("url", ""))
-                    embed.set_footer(text="My Ballard")
+                    embed.set_footer(text=feed_title)
                     await channel.send(embed=embed)
                     self.seen.add(entry.id)
 
