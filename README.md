@@ -1,4 +1,4 @@
-# My Ballard Discord Feed Bot
+# Discord Feed Bot
 
 A Discord bot that polls an RSS feed and automatically posts new articles as embeds to a Discord channel.
 
@@ -10,7 +10,7 @@ A Discord bot that polls an RSS feed and automatically posts new articles as emb
 ## 1. Create a Discord Bot
 
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**.
-2. Give it a name (e.g. "My Ballard Feed Bot") and click **Create**.
+2. Give it a name (e.g. "Feed Bot") and click **Create**.
 3. In the left sidebar, click **Bot**.
 4. Click **Add Bot**, then confirm.
 5. Under the **Token** section, click **Reset Token** and copy the token — you'll need this for your `.env` file.
@@ -84,3 +84,7 @@ journalctl -u feed-bot -f
 ## How It Works
 
 The bot checks the RSS feed every 10 minutes. New articles (ones it hasn't seen before) are posted to the configured channel as Discord embeds showing the title, link, and a short summary. Seen article IDs are saved to a local JSON file so duplicates are never posted, even after a restart.
+
+## Author
+
+This script was made with the assistance of Claude Code, and is published by Jason Weill (dev@weill.org).
