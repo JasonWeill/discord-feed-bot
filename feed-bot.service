@@ -6,9 +6,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/urbanist-feed-bot
-EnvironmentFile=/home/pi/urbanist-feed-bot/.env
-ExecStart=/usr/bin/python3 /home/pi/urbanist-feed-bot/bot.py
+WorkingDirectory=/PATH-TO-BOT/
+EnvironmentFile=/PATH-TO-BOT/.env
+ExecStart=/usr/bin/python3 /PATH-TO-BOT/bot.py
 Restart=on-failure
 RestartSec=30
 
