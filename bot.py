@@ -3,34 +3,36 @@ import feedparser
 import json
 import os
 import asyncio
-from datetime import timezone
-
-FEED_URL = os.environ["FEED_URL"]
-
 import hashlib
-_feed_hash = hashlib.md5(FEED_URL.encode()).hexdigest()[:8]
-SEEN_FILE = f"seen_articles_{_feed_hash}.json"
+
+# FEEDS must be a JSON array of {"url": "...", "channel_id": 123} objects
+FEEDS = json.loads(os.environ["FEEDS"])
 CHECK_INTERVAL = 600  # seconds (10 minutes)
 
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
-DISCORD_CHANNEL_ID = int(os.environ["DISCORD_CHANNEL_ID"])
 
 
-def load_seen():
-    if os.path.exists(SEEN_FILE):
-        with open(SEEN_FILE) as f:
+def seen_file(url):
+    h = hashlib.md5(url.encode()).hexdigest()[:8]
+    return f"seen_articles_{h}.json"
+
+
+def load_seen(url):
+    path = seen_file(url)
+    if os.path.exists(path):
+        with open(path) as f:
             return set(json.load(f))
     return set()
 
 
-def save_seen(seen):
-    with open(SEEN_FILE, "w") as f:
+def save_seen(url, seen):
+    with open(seen_file(url), "w") as f:
         json.dump(list(seen), f)
 
 
-def fetch_new_articles(seen):
-    feed = feedparser.parse(FEED_URL)
-    feed_title = feed.feed.get("title", FEED_URL)
+def fetch_new_articles(url, seen):
+    feed = feedparser.parse(url)
+    feed_title = feed.feed.get("title", url)
     new = []
     for entry in reversed(feed.entries):  # oldest first
         if entry.id not in seen:
@@ -42,22 +44,23 @@ class FeedBot(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
         super().__init__(intents=intents)
-        self.seen = load_seen()
+        self.seen = {f["url"]: load_seen(f["url"]) for f in FEEDS}
 
     async def on_ready(self):
         print(f"Logged in as {self.user}")
-        self.loop.create_task(self.poll_feed())
+        for feed in FEEDS:
+            self.loop.create_task(self.poll_feed(feed["url"], int(feed["channel_id"])))
 
-    async def poll_feed(self):
+    async def poll_feed(self, url, channel_id):
         await self.wait_until_ready()
-        channel = self.get_channel(DISCORD_CHANNEL_ID)
+        channel = self.get_channel(channel_id)
         if channel is None:
-            print(f"ERROR: Could not find channel {DISCORD_CHANNEL_ID}")
+            print(f"ERROR: Could not find channel {channel_id}")
             return
 
         while not self.is_closed():
             try:
-                new_articles, feed_title = fetch_new_articles(self.seen)
+                new_articles, feed_title = fetch_new_articles(url, self.seen[url])
                 for entry in new_articles:
                     embed = discord.Embed(
                         title=entry.title,
@@ -69,13 +72,13 @@ class FeedBot(discord.Client):
                         embed.set_image(url=entry.media_content[0].get("url", ""))
                     embed.set_footer(text=feed_title)
                     await channel.send(embed=embed)
-                    self.seen.add(entry.id)
+                    self.seen[url].add(entry.id)
 
                 if new_articles:
-                    save_seen(self.seen)
+                    save_seen(url, self.seen[url])
 
             except Exception as e:
-                print(f"Error polling feed: {e}")
+                print(f"Error polling {url}: {e}")
 
             await asyncio.sleep(CHECK_INTERVAL)
 

@@ -1,6 +1,6 @@
 # Discord Feed Bot
 
-A Discord bot that polls an RSS feed and automatically posts new articles as embeds to a Discord channel.
+A Discord bot that polls one or more RSS feeds and automatically posts new articles as embeds to associated Discord channels.
 
 ## Prerequisites
 
@@ -27,10 +27,12 @@ A Discord bot that polls an RSS feed and automatically posts new articles as emb
 
 > You must have the **Manage Server** permission on the target server to add a bot.
 
-## 3. Get Your Channel ID
+## 3. Get Your Channel IDs
+
+For each feed you want to monitor, you'll need the ID of the Discord channel it should post to.
 
 1. In Discord, open **User Settings > Advanced** and enable **Developer Mode**.
-2. Right-click the channel you want the bot to post in and click **Copy Channel ID**.
+2. Right-click each channel you want the bot to post in and click **Copy Channel ID**.
 
 ## 4. Configure the Bot
 
@@ -44,9 +46,10 @@ Edit `.env`:
 
 ```
 DISCORD_TOKEN=your-bot-token-here
-DISCORD_CHANNEL_ID=your-channel-id-here
-FEED_URL=https://example.com/feed.rss
+FEEDS=[{"url":"https://theurbanist.org/feed/","channel_id":111222333444555666},{"url":"https://www.myballard.com/feed/","channel_id":777888999000111222}]
 ```
+
+`FEEDS` is a JSON array where each object maps one RSS feed URL to one Discord channel ID. Each feed posts only to its associated channel.
 
 ## 5. Install Dependencies
 
@@ -83,7 +86,7 @@ journalctl -u feed-bot -f
 
 ## How It Works
 
-The bot checks the RSS feed every 10 minutes. New articles (ones it hasn't seen before) are posted to the configured channel as Discord embeds showing the title, link, and a short summary. Seen article IDs are saved to a local JSON file so duplicates are never posted, even after a restart.
+The bot polls each RSS feed every 10 minutes in parallel. New articles are posted to their associated channel as Discord embeds showing the title, link, and a short summary. The footer of each embed shows the feed's own name. Seen article IDs are saved to a per-feed JSON file so duplicates are never posted, even after a restart.
 
 ## Author
 
