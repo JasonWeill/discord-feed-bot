@@ -48,20 +48,40 @@ class FeedBot(discord.Client):
 
     async def on_ready(self):
         print(f"Logged in as {self.user}")
+        print(f"Connected to {len(self.guilds)} guild(s):")
+        for guild in self.guilds:
+            print(f"  - {guild.name} (id={guild.id})")
+        print(f"Configured feeds:")
+        for feed in FEEDS:
+            print(f"  - {feed['url']} -> channel {feed['channel_id']}")
         for feed in FEEDS:
             self.loop.create_task(self.poll_feed(feed["url"], int(feed["channel_id"])))
 
     async def poll_feed(self, url, channel_id):
         await self.wait_until_ready()
-        channel = self.get_channel(channel_id)
-        if channel is None:
-            print(f"ERROR: Could not find channel {channel_id}")
-            return
+        print(f"[{url}] Polling task started")
 
         while not self.is_closed():
             try:
+                print(f"[{url}] Looking up channel/thread {channel_id}")
+                try:
+                    channel = await self.fetch_channel(channel_id)
+                except discord.NotFound:
+                    print(f"[{url}] ERROR: Channel/thread {channel_id} not found, will retry in {CHECK_INTERVAL}s")
+                    await asyncio.sleep(CHECK_INTERVAL)
+                    continue
+                except discord.Forbidden:
+                    print(f"[{url}] ERROR: No access to channel/thread {channel_id}, will retry in {CHECK_INTERVAL}s")
+                    await asyncio.sleep(CHECK_INTERVAL)
+                    continue
+                print(f"[{url}] Found: #{channel.name}")
+
+                print(f"[{url}] Fetching feed")
                 new_articles, feed_title = fetch_new_articles(url, self.seen[url])
+                print(f"[{url}] Feed title: {feed_title!r}, new articles: {len(new_articles)}")
+
                 for entry in new_articles:
+                    print(f"[{url}] Posting: {entry.title!r}")
                     embed = discord.Embed(
                         title=entry.title,
                         url=entry.link,
@@ -73,13 +93,15 @@ class FeedBot(discord.Client):
                     embed.set_footer(text=feed_title)
                     await channel.send(embed=embed)
                     self.seen[url].add(entry.id)
+                    print(f"[{url}] Posted: {entry.title!r}")
 
                 if new_articles:
                     save_seen(url, self.seen[url])
 
             except Exception as e:
-                print(f"Error polling {url}: {e}")
+                print(f"[{url}] Error: {e}")
 
+            print(f"[{url}] Sleeping {CHECK_INTERVAL}s")
             await asyncio.sleep(CHECK_INTERVAL)
 
 
