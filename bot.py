@@ -45,6 +45,7 @@ class FeedBot(discord.Client):
         intents = discord.Intents.default()
         super().__init__(intents=intents)
         self.seen = {f["url"]: load_seen(f["url"]) for f in FEEDS}
+        self.polling_started = False
 
     async def on_ready(self):
         print(f"Logged in as {self.user}")
@@ -54,8 +55,15 @@ class FeedBot(discord.Client):
         print(f"Configured feeds:")
         for feed in FEEDS:
             print(f"  - {feed['url']} -> channel {feed['channel_id']}")
-        for feed in FEEDS:
-            self.loop.create_task(self.poll_feed(feed["url"], int(feed["channel_id"])))
+
+        # Only start polling tasks once, even if bot reconnects
+        if not self.polling_started:
+            print("Starting polling tasks...")
+            for feed in FEEDS:
+                self.loop.create_task(self.poll_feed(feed["url"], int(feed["channel_id"])))
+            self.polling_started = True
+        else:
+            print("Reconnected - polling tasks already running")
 
     async def poll_feed(self, url, channel_id):
         await self.wait_until_ready()
